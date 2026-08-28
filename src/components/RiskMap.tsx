@@ -35,13 +35,15 @@ interface RiskMapProps {
 
 // ── Main component ──────────────────────────────────────────────────────────
 export default function RiskMap({ wards, loading }: RiskMapProps) {
-  const { setSelectedWardId } = useScenario();
+  const { scenarioActive, simulatedIndex, setSelectedWardId, getEffectiveWardData } = useScenario();
   const [layers, setLayers] = useState<Layers>({ wards: true, shelters: true, hospitals: true });
   const [selectedWard, setSelectedWard] = useState<WardWeather | null>(null);
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
   const [search, setSearch] = useState("");
 
-  const wardMap = new Map(wards.map((w) => [w.id, w]));
+  // Map wards through getEffectiveWardData so risk map zones react live to Scenario Simulator slider
+  const effectiveWards = wards.map((w) => getEffectiveWardData(w) ?? w);
+  const wardMap = new Map(effectiveWards.map((w) => [w.id, w]));
 
   const toggleLayer = (key: keyof Layers) =>
     setLayers((p) => ({ ...p, [key]: !p[key] }));
@@ -63,13 +65,13 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [wards, setSelectedWardId]
+    [wards, setSelectedWardId, scenarioActive, simulatedIndex]
   );
 
   // Filter wards by search
   const filteredIds = new Set(
     search.trim()
-      ? wards
+      ? effectiveWards
           .filter(
             (w) =>
               w.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -77,7 +79,7 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
               w.zone.toLowerCase().includes(search.toLowerCase())
           )
           .map((w) => w.id)
-      : wards.map((w) => w.id)
+      : effectiveWards.map((w) => w.id)
   );
 
   // GeoJSON style per feature
@@ -89,7 +91,7 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
     const isVisible = filteredIds.has(id);
     return {
       fillColor: riskColor(score),
-      fillOpacity: isVisible ? (isSelected ? 0.7 : 0.4) : 0.08,
+      fillOpacity: isVisible ? (isSelected ? 0.75 : 0.5) : 0.08,
       color: isSelected ? "#ffffff" : riskColor(score),
       weight: isSelected ? 3 : 1.5,
       opacity: isVisible ? 1 : 0.2,
@@ -104,10 +106,10 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
     layer.on({
       mouseover: (e: LeafletMouseEvent) => {
         const target = e.target as L.Path;
-        target.setStyle({ weight: 3, fillOpacity: 0.6 });
+        target.setStyle({ weight: 3, fillOpacity: 0.7 });
         if (w) {
           target.bindTooltip(
-            `<strong>${w.name}</strong><br/>Risk: ${w.riskScore}/100 · ${w.risk}<br/>WBGT: ${w.heatIndex.toFixed(1)}°C | UTCI: ${w.utci.toFixed(1)}°C`,
+            `<strong>${w.name}</strong><br/>Risk: ${w.riskScore}/100 · ${w.risk}<br/>WBGT: ${w.heatIndex.toFixed(1)}°C | UTCI: ${w.utci.toFixed(1)}°C${scenarioActive ? ' (Simulated)' : ''}`,
             { sticky: true, className: "ward-tooltip" }
           ).openTooltip();
         }
@@ -117,7 +119,7 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
         const isSelected = selectedWard?.id === props.id;
         target.setStyle({
           weight: isSelected ? 3 : 1.5,
-          fillOpacity: isSelected ? 0.7 : 0.4,
+          fillOpacity: isSelected ? 0.75 : 0.5,
         });
         target.closeTooltip();
       },
@@ -180,10 +182,10 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
         />
         <FlyTo center={flyTarget} />
 
-        {/* Ward polygons */}
+        {/* Ward polygons: key includes scenarioActive & simulatedIndex to re-render colors when slider changes */}
         {layers.wards && !loading && (
           <GeoJSON
-            key={`wards-${selectedWard?.id ?? "none"}-${search}`}
+            key={`wards-${selectedWard?.id ?? "none"}-${search}-${scenarioActive ? simulatedIndex : "real"}`}
             data={wardGeoJSON}
             style={wardStyle}
             onEachFeature={onEachWard}
