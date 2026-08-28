@@ -28,7 +28,7 @@ function Skeleton({ className = "", style }: { className?: string; style?: CSSPr
 // ── Main component ─────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { wards, loading } = useWeatherData();
-  const { selectedWardId, getEffectiveWardData } = useScenario();
+  const { selectedWardId, setSelectedWardId, getEffectiveWardData } = useScenario();
 
   // Selected ward or fallback to highest risk ward
   const rawWard = wards.find((w) => w.id === selectedWardId) ??
@@ -37,8 +37,8 @@ export default function Dashboard() {
   // Apply simulated scenario values if active
   const activeWard = getEffectiveWardData(rawWard);
 
-  // Trend: sort wards by risk score ascending for the bar chart
-  const trendWards = [...wards].sort((a, b) => a.riskScore - b.riskScore).slice(0, 7);
+  // All 24 Wards sorted by risk score ascending for the bar chart comparison
+  const trendWards = [...wards].sort((a, b) => a.riskScore - b.riskScore);
 
   const riskBadgeStyle =
     activeWard?.risk === "Extreme" ? "bg-error-container text-on-error-container border-secondary-fixed"
@@ -128,34 +128,68 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 7-Ward Risk Trend */}
+          {/* All 24 Wards Risk Comparison Block */}
           <div className="bg-surface-container-lowest rounded-xl shadow-level-1 p-md border border-surface-variant flex-grow flex flex-col">
-            <h4 className="text-label-md font-label-md text-primary mb-md uppercase tracking-wider flex justify-between items-center">
-              Ward Risk Comparison
+            <div className="flex justify-between items-center mb-sm">
+              <h4 className="text-label-md font-label-md text-primary uppercase tracking-wider">
+                Ward Risk Comparison ({trendWards.length} Wards)
+              </h4>
               <span className="material-symbols-outlined text-on-surface-variant text-sm">bar_chart</span>
-            </h4>
-            <div className="flex-grow relative mt-sm min-h-[100px]">
+            </div>
+
+            <div className="flex-grow relative mt-sm min-h-[110px] flex flex-col justify-end">
               {loading ? (
-                <div className="absolute inset-0 flex items-end justify-between px-sm pb-lg gap-1">
-                  {Array.from({ length: 7 }).map((_, i) => (
+                <div className="absolute inset-0 flex items-end justify-between px-1 pb-6 gap-[1px]">
+                  {Array.from({ length: 24 }).map((_, i) => (
                     <Skeleton key={i} className="flex-1 animate-pulse" style={{ height: `${20 + Math.random() * 60}%` }} />
                   ))}
                 </div>
               ) : (
-                <div className="absolute inset-0 flex items-end justify-between px-sm pb-6">
-                  {trendWards.map((w) => (
-                    <div
-                      key={w.id}
-                      title={`${w.name}: WBGT ${w.heatIndex}°C | UTCI ${w.utci}°C (score ${w.riskScore})`}
-                      className={`flex-1 mx-px ${trendBarColor(w.riskScore)} rounded-t-DEFAULT opacity-80 hover:opacity-100 transition-opacity cursor-default`}
-                      style={{ height: `${Math.max(8, w.riskScore)}%` }}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="flex items-end justify-between h-24 px-0.5 gap-[1.5px]">
+                    {trendWards.map((w) => {
+                      const isSelected = activeWard?.id === w.id;
+                      return (
+                        <div
+                          key={w.id}
+                          onClick={() => setSelectedWardId(w.id)}
+                          title={`${w.name} (${w.id}): WBGT ${w.heatIndex.toFixed(1)}°C | UTCI ${w.utci.toFixed(1)}°C (Score: ${w.riskScore}/100)`}
+                          className={`flex-1 ${trendBarColor(w.riskScore)} rounded-t-sm transition-all cursor-pointer relative group ${
+                            isSelected ? "ring-2 ring-primary opacity-100 z-10 scale-y-105" : "opacity-75 hover:opacity-100"
+                          }`}
+                          style={{ height: `${Math.max(10, w.riskScore)}%` }}
+                        >
+                          {/* Hover tooltip label */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:flex flex-col items-center z-30 pointer-events-none">
+                            <span className="bg-black/90 text-white text-[10px] py-0.5 px-1.5 rounded shadow whitespace-nowrap font-bold">
+                              {w.id}: {w.riskScore}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* High-density rotated / compact ward ID labels */}
+                  <div className="flex justify-between text-[9px] font-mono text-on-surface-variant border-t border-surface-variant pt-1 px-0.5 overflow-x-auto gap-[1px]">
+                    {trendWards.map((w) => {
+                      const isSelected = activeWard?.id === w.id;
+                      return (
+                        <span
+                          key={w.id}
+                          onClick={() => setSelectedWardId(w.id)}
+                          className={`flex-1 text-center truncate cursor-pointer transition-colors ${
+                            isSelected ? "font-bold text-primary scale-110" : "hover:text-primary"
+                          }`}
+                          title={w.name}
+                        >
+                          {w.id}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </>
               )}
-              <div className="absolute bottom-0 left-0 w-full flex justify-between text-label-sm font-label-sm text-on-surface-variant border-t border-surface-variant pt-xs px-sm">
-                {trendWards.map((w) => <span key={w.id} className="truncate">{w.id}</span>)}
-              </div>
             </div>
           </div>
         </section>
