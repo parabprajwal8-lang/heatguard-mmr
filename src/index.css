@@ -1,0 +1,96 @@
+/* ─── Google Font: Public Sans (must be first) ─── */
+@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap");
+
+/* ─── Material Symbols ─── */
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* shadcn/ui CSS variable convention (HSL values for its internal components) */
+    --background: 204 40% 97%;
+    --foreground: 210 13% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 13% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 13% 11%;
+    --primary: 212 100% 13%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 358 56% 43%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 210 16% 93%;
+    --muted-foreground: 215 10% 29%;
+    --accent: 210 16% 93%;
+    --accent-foreground: 212 100% 13%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 84%;
+    --input: 220 13% 84%;
+    --ring: 212 100% 13%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    font-family: "Public Sans", system-ui, sans-serif;
+    background-color: #f7fafc;
+    color: #181c1e;
+    min-height: 100vh;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Material Symbols icon defaults */
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  }
+}
+
+@layer utilities {
+  /* Elevation shadows from DESIGN.md */
+  .shadow-level-1 {
+    box-shadow: 0 4px 12px rgba(26, 54, 93, 0.05);
+  }
+  .shadow-level-2 {
+    box-shadow: 0 8px 20px rgba(26, 54, 93, 0.1);
+  }
+}
+
+/* ─── Drawer slide-in animation ─── */
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slideIn 0.25s ease-out;
+}
+
+/* ─── Leaflet tooltip styling ─── */
+.ward-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #c4c6cf !important;
+  border-radius: 0.5rem !important;
+  padding: 8px 12px !important;
+  font-family: "Public Sans", sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: #181c1e !important;
+  box-shadow: 0 4px 12px rgba(26, 54, 93, 0.1) !important;
+}
+.ward-tooltip::before { border-top-color: #c4c6cf !important; }
+
+/* ─── Leaflet popup overrides ─── */
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem !important;
+  box-shadow: 0 8px 20px rgba(26, 54, 93, 0.1) !important;
+  font-family: "Public Sans", sans-serif !important;
+}
+.leaflet-popup-content { margin: 12px 16px !important; }
