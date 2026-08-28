@@ -3,6 +3,7 @@ import { useWeatherData, type WardWeather } from "@/hooks/useWeatherData";
 import { useScenario } from "@/context/ScenarioContext";
 import type { RiskBand } from "@/lib/thermalIndex";
 import HeatMapXL from "@/components/ui/heat-map-xl";
+import PolicySimulatorModal from "@/components/PolicySimulatorModal";
 
 // ── Risk styling ────────────────────────────────────────────────────────────
 const RISK_STYLE: Record<RiskBand, { dot: string; pill: string }> = {
@@ -33,6 +34,7 @@ export default function AdminView() {
   const { wards, loading, updatedAt } = useWeatherData();
   const { scenarioActive, simulatedIndex, getEffectiveWardData } = useScenario();
 
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [actions, setActions] = useState<ActionMap>({
     L: true, ME: false, GN: true, A: false, B: false, KW: false, PN: false,
   });
@@ -73,6 +75,7 @@ export default function AdminView() {
             <p className="text-label-sm font-label-sm text-on-surface-variant">MMR Operations</p>
           </div>
         </div>
+
         <nav className="flex flex-col gap-sm flex-1">
           {[
             { icon: "dashboard",         label: "Overview",         active: false },
@@ -87,9 +90,19 @@ export default function AdminView() {
               {label}
             </a>
           ))}
+
+          {/* Urban Cooling Policy Studio Sidebar Launcher Button */}
+          <button
+            onClick={() => setIsPolicyModalOpen(true)}
+            className="flex items-center gap-md px-md py-3 rounded-lg text-label-md font-label-md bg-primary text-on-primary font-bold shadow-sm hover:opacity-90 transition-opacity mt-sm"
+          >
+            <span className="material-symbols-outlined">published_with_changes</span>
+            Policy Studio
+          </button>
         </nav>
+
         <div className="mt-auto flex flex-col gap-sm">
-          <button className="w-full py-3 px-md bg-primary text-on-primary rounded-lg text-label-md font-label-md font-bold shadow-sm hover:opacity-90 transition-opacity mb-md">
+          <button className="w-full py-3 px-md bg-secondary text-on-secondary rounded-lg text-label-md font-label-md font-bold shadow-sm hover:opacity-90 transition-opacity mb-md">
             Activate Heat Action Plan
           </button>
           <div className="border-t border-outline-variant pt-sm">
@@ -107,19 +120,36 @@ export default function AdminView() {
         <div className="p-margin-mobile md:p-lg max-w-7xl mx-auto space-y-lg">
 
           {/* Page header */}
-          <div className="flex justify-between items-end pb-sm border-b border-surface-variant">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-md pb-sm border-b border-surface-variant">
             <div>
-              <h1 className="text-display-lg-mobile md:text-display-lg font-display-lg-mobile md:font-display-lg text-primary">Municipal Admin View</h1>
+              <h1 className="text-display-lg-mobile md:text-display-lg font-display-lg-mobile md:font-display-lg text-primary">Municipal Admin Dashboard</h1>
               <p className="text-body-lg font-body-lg text-on-surface-variant mt-xs">
                 {updatedAt ? `Live data · ${updatedAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : "Loading live data…"}
               </p>
             </div>
-            {scenarioActive && (
-              <div className="bg-secondary-container text-on-secondary-container px-md py-xs rounded-full text-label-sm font-label-sm font-bold flex items-center gap-xs">
-                <span className="material-symbols-outlined text-sm">tune</span>
-                SCENARIO SIMULATOR ACTIVE: {simulatedIndex}°C
-              </div>
-            )}
+
+            <div className="flex items-center gap-sm flex-wrap">
+              {scenarioActive && (
+                <div className="bg-secondary-container text-on-secondary-container px-md py-xs rounded-full text-label-sm font-label-sm font-bold flex items-center gap-xs">
+                  <span className="material-symbols-outlined text-sm">tune</span>
+                  SIMULATOR ACTIVE: {simulatedIndex}°C
+                </div>
+              )}
+
+              {/* Policy Studio Header Launcher Button */}
+              <button
+                onClick={() => setIsPolicyModalOpen(true)}
+                className="flex items-center gap-xs px-md py-2 bg-primary text-on-primary rounded-lg text-label-md font-label-md font-bold shadow-level-1 hover:opacity-90 transition-opacity"
+              >
+                <span className="material-symbols-outlined text-[20px]">published_with_changes</span>
+                Urban Cooling Policy Studio
+              </button>
+
+              <button className="hidden md:flex items-center gap-xs px-md py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-label-md font-label-md text-primary hover:bg-surface-bright shadow-level-1 transition-all">
+                <span className="material-symbols-outlined text-[20px]">download</span>
+                Export Report
+              </button>
+            </div>
           </div>
 
           {/* Stat bar */}
@@ -150,9 +180,13 @@ export default function AdminView() {
                 <span className="material-symbols-outlined text-secondary">domain</span>
                 Expected Municipal Cooling Infrastructure Requirement (BMC Forecast)
               </h2>
-              <span className="text-label-sm font-label-sm px-sm py-xs bg-surface-container-high rounded text-on-surface-variant">
-                Live Formula Prediction
-              </span>
+              <button
+                onClick={() => setIsPolicyModalOpen(true)}
+                className="text-label-sm font-label-sm px-sm py-xs bg-primary-container text-on-primary-container rounded font-bold hover:opacity-90 flex items-center gap-xs"
+              >
+                <span className="material-symbols-outlined text-xs">published_with_changes</span>
+                Simulate Interventions
+              </button>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-md">
@@ -248,6 +282,9 @@ export default function AdminView() {
           <HeatMapXL />
         </div>
       </main>
+
+      {/* Urban Cooling Policy Simulator Modal */}
+      <PolicySimulatorModal isOpen={isPolicyModalOpen} onClose={() => setIsPolicyModalOpen(false)} />
     </>
   );
 }

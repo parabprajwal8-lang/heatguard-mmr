@@ -24,7 +24,10 @@ export default function PolicySimulatorModal({ isOpen, onClose }: PolicySimulato
     const baseUTCI = 42.8;
     const baseWBGT = 34.2;
 
-    // Cooling cooling offsets:
+    // Baseline mortality rate per 100k population during extreme heat
+    const baseFatalityRatePer100k = 4.8; // 4.8 per 100k
+
+    // Cooling offsets:
     // Cool roofs: up to -1.8°C at 100%
     const coolRoofDelta = (coolRoofs / 100) * 1.8;
     // Tree canopy: up to -2.2°C at 50%
@@ -46,8 +49,13 @@ export default function PolicySimulatorModal({ isOpen, onClose }: PolicySimulato
     const rawPop = parseInt(ward.density.replace(/[^0-9]/g, ""), 10) || 30000;
     const citizensShielded = Math.round(rawPop * (totalUtciDrop / 10) * 1.2);
 
+    // Fatality Rate Reduction formula
+    // Heat mortality drops exponentially with UTCI reduction & curfew
+    const fatalityDropPct = Math.min(78, Math.round(totalUtciDrop * 15 + (laborCurfew ? 15 : 0)));
+    const postFatalityRatePer100k = Math.max(0.6, Math.round((baseFatalityRatePer100k * (1 - fatalityDropPct / 100)) * 10) / 10);
+    const livesSavedEst = Math.round((rawPop / 100000) * (baseFatalityRatePer100k - postFatalityRatePer100k));
+
     // Feasibility Score calculation (0-100)
-    // High canopy + high misting increases cost, lowering feasibility slightly but increasing impact
     const feasibilityScore = Math.max(
       40,
       Math.round(92 - (coolRoofs * 0.15 + treeCanopy * 0.4 + mistingHubs * 0.5 + (laborCurfew ? 5 : 0)))
@@ -63,6 +71,10 @@ export default function PolicySimulatorModal({ isOpen, onClose }: PolicySimulato
       totalUtciDrop,
       hospitalSurgeDrop,
       citizensShielded,
+      baseFatalityRatePer100k,
+      postFatalityRatePer100k,
+      fatalityDropPct,
+      livesSavedEst,
       feasibilityScore,
     };
   }, [coolRoofs, treeCanopy, mistingHubs, laborCurfew, ward]);
@@ -82,7 +94,7 @@ export default function PolicySimulatorModal({ isOpen, onClose }: PolicySimulato
               Urban Cooling 'What-If' Policy Simulator Studio
             </h2>
             <p className="text-label-sm font-label-sm text-on-surface-variant mt-xs">
-              Simulate microclimate intervention scenarios and forecast heat stress mitigation impact
+              Simulate microclimate intervention scenarios and forecast heat stress & fatality reduction
             </p>
           </div>
           <button
@@ -187,7 +199,12 @@ export default function PolicySimulatorModal({ isOpen, onClose }: PolicySimulato
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
           {/* Baseline */}
           <div className="bg-surface p-md rounded-xl border border-surface-variant space-y-xs">
-            <h4 className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Current Baseline</h4>
+            <div className="flex justify-between items-center">
+              <h4 className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Current Baseline</h4>
+              <span className="text-label-sm font-label-sm text-error font-bold">
+                Fatality Rate: {simulation.baseFatalityRatePer100k} / 100k
+              </span>
+            </div>
             <div className="grid grid-cols-3 gap-xs text-center pt-xs">
               <div>
                 <span className="text-[11px] text-on-surface-variant block">Temp</span>
@@ -206,7 +223,12 @@ export default function PolicySimulatorModal({ isOpen, onClose }: PolicySimulato
 
           {/* Post-Intervention */}
           <div className="bg-tertiary-fixed/30 p-md rounded-xl border border-tertiary-fixed space-y-xs">
-            <h4 className="text-label-sm font-label-sm text-primary font-bold uppercase tracking-wider">Post-Intervention Forecast</h4>
+            <div className="flex justify-between items-center">
+              <h4 className="text-label-sm font-label-sm text-primary font-bold uppercase tracking-wider">Post-Intervention Forecast</h4>
+              <span className="text-label-sm font-label-sm text-primary font-bold">
+                Fatality Rate: {simulation.postFatalityRatePer100k} / 100k
+              </span>
+            </div>
             <div className="grid grid-cols-3 gap-xs text-center pt-xs">
               <div>
                 <span className="text-[11px] text-on-surface-variant block">Temp</span>
@@ -224,18 +246,27 @@ export default function PolicySimulatorModal({ isOpen, onClose }: PolicySimulato
           </div>
         </div>
 
-        {/* 3 Impact Stat Cards */}
-        <div className="grid grid-cols-3 gap-sm">
+        {/* 4 Impact Stat Cards (Including Fatality Rate Drop) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-sm">
           <div className="bg-surface p-sm rounded-xl border border-surface-variant text-center">
             <span className="material-symbols-outlined text-secondary text-sm">trending_down</span>
-            <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">UTCI Thermal Drop</span>
+            <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">UTCI Drop</span>
             <span className="text-headline-md font-headline-md text-secondary font-bold">-{simulation.totalUtciDrop}°C</span>
           </div>
+
           <div className="bg-surface p-sm rounded-xl border border-surface-variant text-center">
             <span className="material-symbols-outlined text-tertiary-fixed-dim text-sm">local_hospital</span>
             <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Hospital Surge Drop</span>
             <span className="text-headline-md font-headline-md text-primary font-bold">-{simulation.hospitalSurgeDrop}%</span>
           </div>
+
+          <div className="bg-surface p-sm rounded-xl border border-surface-variant text-center bg-error-container/20">
+            <span className="material-symbols-outlined text-error text-sm">heart_broken</span>
+            <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Fatality Rate Reduction</span>
+            <span className="text-headline-md font-headline-md text-error font-bold">-{simulation.fatalityDropPct}%</span>
+            <span className="text-[10px] text-on-surface-variant block">Est. ~{simulation.livesSavedEst} lives saved</span>
+          </div>
+
           <div className="bg-surface p-sm rounded-xl border border-surface-variant text-center">
             <span className="material-symbols-outlined text-primary text-sm">shield</span>
             <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Citizens Shielded</span>
@@ -250,11 +281,11 @@ export default function PolicySimulatorModal({ isOpen, onClose }: PolicySimulato
             <span className="text-[10px] text-on-surface-variant uppercase">Feasibility</span>
           </div>
           <div className="space-y-xs text-body-md font-body-md text-on-surface-variant">
-            <p className="font-bold text-primary">Simulation Key Findings:</p>
+            <p className="font-bold text-primary">Simulation Key Policy Findings:</p>
             <ul className="list-disc list-inside space-y-0.5 text-xs">
               <li>Cool roof painting on high-density metal roofs yields immediate -1.8°C thermal relief.</li>
               <li>Evaporative misting stations significantly lower peak outdoor wet-bulb globe temperature.</li>
-              <li>Enforcing 12 PM - 4 PM labor curfew drops heatstroke admissions by ~{simulation.hospitalSurgeDrop}%.</li>
+              <li>Labor curfew + cool roofs drop projected heat mortality / fatality rate by <strong>-{simulation.fatalityDropPct}%</strong>.</li>
             </ul>
           </div>
         </div>
