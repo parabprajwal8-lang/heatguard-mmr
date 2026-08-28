@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useWeatherData, type WardWeather } from "@/hooks/useWeatherData";
+import { useScenario } from "@/context/ScenarioContext";
 import type { RiskBand } from "@/lib/thermalIndex";
 import HeatMapXL from "@/components/ui/heat-map-xl";
 
@@ -26,12 +27,12 @@ function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-surface-container-high rounded ${className}`} />;
 }
 
-// ── ActionPlan state per ward (local override, Phase 4+ may persist) ────────
 type ActionMap = Record<string, boolean>;
 
-// ── Component ────────────────────────────────────────────────────────────────
 export default function AdminView() {
-  const { wards, loading, error, updatedAt } = useWeatherData();
+  const { wards, loading, updatedAt } = useWeatherData();
+  const { scenarioActive, simulatedIndex, getEffectiveWardData } = useScenario();
+
   const [actions, setActions] = useState<ActionMap>({
     L: true, ME: false, GN: true, A: false, B: false, KW: false, PN: false,
   });
@@ -39,13 +40,25 @@ export default function AdminView() {
 
   const toggle = (id: string) => setActions((p) => ({ ...p, [id]: !p[id] }));
 
-  const filtered: WardWeather[] = wards.filter((w) =>
+  // Apply effective ward transformation if Scenario Simulator is active
+  const effectiveWards = wards.map((w) => getEffectiveWardData(w) ?? w);
+
+  const filtered: WardWeather[] = effectiveWards.filter((w) =>
     w.name.toLowerCase().includes(search.toLowerCase()) ||
     w.zone.toLowerCase().includes(search.toLowerCase())
   );
 
-  const extremeCount = wards.filter((w) => w.risk === "Extreme").length;
-  const highCount    = wards.filter((w) => w.risk === "High").length;
+  const extremeCount = effectiveWards.filter((w) => w.risk === "Extreme").length;
+  const highCount    = effectiveWards.filter((w) => w.risk === "High").length;
+
+  // Phase 7 Municipal Cooling Infrastructure Prediction Formula
+  const highestScore = Math.max(...effectiveWards.map((w) => w.riskScore), 40);
+  const coolingMultiplier = Math.max(1.0, 1.0 + (highestScore - 20) * 0.05);
+
+  const estCoolingCenters = Math.round(28 * coolingMultiplier);
+  const estWaterTankers = Math.round(45 * coolingMultiplier);
+  const estMistingHubs = Math.round(18 * coolingMultiplier);
+  const estShadeTents = Math.round(60 * coolingMultiplier);
 
   return (
     <>
@@ -101,10 +114,12 @@ export default function AdminView() {
                 {updatedAt ? `Live data · ${updatedAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : "Loading live data…"}
               </p>
             </div>
-            <button className="hidden md:flex items-center gap-xs px-md py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-label-md font-label-md text-primary hover:bg-surface-bright shadow-level-1 transition-all">
-              <span className="material-symbols-outlined text-[20px]">download</span>
-              Export Report
-            </button>
+            {scenarioActive && (
+              <div className="bg-secondary-container text-on-secondary-container px-md py-xs rounded-full text-label-sm font-label-sm font-bold flex items-center gap-xs">
+                <span className="material-symbols-outlined text-sm">tune</span>
+                SCENARIO SIMULATOR ACTIVE: {simulatedIndex}°C
+              </div>
+            )}
           </div>
 
           {/* Stat bar */}
@@ -128,13 +143,48 @@ export default function AdminView() {
             ))}
           </div>
 
-          {/* Error banner */}
-          {error && (
-            <div className="bg-error-container text-on-error-container rounded-xl p-md flex items-center gap-sm text-body-md font-body-md">
-              <span className="material-symbols-outlined">wifi_off</span>
-              Could not fetch live weather. Showing last known data. ({error})
+          {/* Phase 7: Expected Municipal Cooling Infrastructure Requirement */}
+          <div className="bg-surface-container-lowest rounded-xl shadow-level-1 p-lg border border-surface-variant space-y-md">
+            <div className="flex items-center justify-between">
+              <h2 className="text-headline-md font-headline-md text-primary flex items-center gap-xs">
+                <span className="material-symbols-outlined text-secondary">domain</span>
+                Expected Municipal Cooling Infrastructure Requirement (BMC Forecast)
+              </h2>
+              <span className="text-label-sm font-label-sm px-sm py-xs bg-surface-container-high rounded text-on-surface-variant">
+                Live Formula Prediction
+              </span>
             </div>
-          )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-md">
+              <div className="bg-surface p-md rounded-xl border border-surface-variant text-center">
+                <span className="material-symbols-outlined text-primary text-md">storefront</span>
+                <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Cooling Centers Needed</span>
+                <span className="text-headline-lg font-headline-lg text-primary font-bold">{estCoolingCenters}</span>
+                <span className="text-[10px] text-on-surface-variant block mt-0.5">Community hall activations</span>
+              </div>
+
+              <div className="bg-surface p-md rounded-xl border border-surface-variant text-center">
+                <span className="material-symbols-outlined text-secondary text-md">local_shipping</span>
+                <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Water Tanker Fleets</span>
+                <span className="text-headline-lg font-headline-lg text-secondary font-bold">{estWaterTankers}</span>
+                <span className="text-[10px] text-on-surface-variant block mt-0.5">Emergency water dispatches</span>
+              </div>
+
+              <div className="bg-surface p-md rounded-xl border border-surface-variant text-center">
+                <span className="material-symbols-outlined text-tertiary-fixed-dim text-md">ac_unit</span>
+                <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Evaporative Misting Hubs</span>
+                <span className="text-headline-lg font-headline-lg text-primary font-bold">{estMistingHubs}</span>
+                <span className="text-[10px] text-on-surface-variant block mt-0.5">Market misting deployment</span>
+              </div>
+
+              <div className="bg-surface p-md rounded-xl border border-surface-variant text-center">
+                <span className="material-symbols-outlined text-error text-md">roofing</span>
+                <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Shade Canopy Tents</span>
+                <span className="text-headline-lg font-headline-lg text-error font-bold">{estShadeTents}</span>
+                <span className="text-[10px] text-on-surface-variant block mt-0.5">Transit bus stop covers</span>
+              </div>
+            </div>
+          </div>
 
           {/* Ward table */}
           <div className="bg-surface-container-lowest rounded-xl shadow-level-1 overflow-hidden">
@@ -151,8 +201,8 @@ export default function AdminView() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-surface-container-low border-b border-surface-variant">
-                    {["Ward Name", "Heat Index", "Current Risk", "Population Density", "Heat Action Plan"].map((h, i) => (
-                      <th key={h} className={`px-lg py-sm text-label-md font-label-md text-primary font-bold${i === 4 ? " text-right" : ""}`}>{h}</th>
+                    {["Ward Name", "WBGT", "UTCI", "Current Risk", "Population Density", "Heat Action Plan"].map((h, i) => (
+                      <th key={h} className={`px-lg py-sm text-label-md font-label-md text-primary font-bold${i === 5 ? " text-right" : ""}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -160,7 +210,7 @@ export default function AdminView() {
                   {loading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <tr key={i}>
-                        {Array.from({ length: 5 }).map((__, j) => (
+                        {Array.from({ length: 6 }).map((__, j) => (
                           <td key={j} className="px-lg py-md"><Skeleton className="h-5 w-full" /></td>
                         ))}
                       </tr>
@@ -171,6 +221,7 @@ export default function AdminView() {
                       <tr key={w.id} className="hover:bg-surface-bright transition-colors">
                         <td className="px-lg py-md text-body-md font-body-md text-on-background font-medium">{w.name}</td>
                         <td className="px-lg py-md text-headline-md font-headline-md text-primary">{w.heatIndex.toFixed(1)}°C</td>
+                        <td className="px-lg py-md text-headline-md font-headline-md text-secondary font-bold">{w.utci.toFixed(1)}°C</td>
                         <td className="px-lg py-md">
                           <span className={`inline-flex items-center gap-xs px-3 py-1 rounded-full ${rs.pill} text-label-sm font-label-sm font-bold`}>
                             <span className={`w-2 h-2 rounded-full ${rs.dot}`} />{w.risk}
@@ -190,21 +241,6 @@ export default function AdminView() {
                   })}
                 </tbody>
               </table>
-            </div>
-
-            <div className="px-lg py-md border-t border-surface-variant flex justify-between items-center bg-surface-container-lowest">
-              <span className="text-label-sm font-label-sm text-on-surface-variant">
-                {loading ? "Loading…" : `Showing ${filtered.length} of ${wards.length} wards`}
-              </span>
-              <div className="flex gap-xs">
-                <button disabled className="p-1 rounded bg-surface-container text-on-surface-variant disabled:opacity-50">
-                  <span className="material-symbols-outlined text-[20px]">chevron_left</span>
-                </button>
-                <button className="w-8 h-8 rounded bg-primary-container text-on-primary-container text-label-sm font-label-sm font-bold flex items-center justify-center">1</button>
-                <button className="p-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                </button>
-              </div>
             </div>
           </div>
 

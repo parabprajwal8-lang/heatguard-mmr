@@ -1,13 +1,13 @@
-// ── NOAA Heat Index (Rothfusz regression) ─────────────────────────────────
+// ── NOAA Heat Index / WBGT (Rothfusz regression) ─────────────────────────
 // Inputs: temp in °C, relativeHumidity in %
-// Returns: Heat Index in °C
+// Returns: Heat Index / WBGT equivalent in °C
 
-function celsiusToF(c: number) { return c * 9 / 5 + 32; }
-function fToCelsius(f: number) { return (f - 32) * 5 / 9; }
+function celsiusToF(c: number) { return (c * 9) / 5 + 32; }
+function fToCelsius(f: number) { return ((f - 32) * 5) / 9; }
 
 export function calcHeatIndex(tempC: number, rh: number): number {
   const T = celsiusToF(tempC);
-  // Use simple formula for low temps or dry conditions
+  // Simple formula for low temps or dry conditions
   if (T < 80 || rh < 40) {
     const hi = 0.5 * (T + 61 + (T - 68) * 1.2 + rh * 0.094);
     return fToCelsius(hi);
@@ -31,7 +31,18 @@ export function calcHeatIndex(tempC: number, rh: number): number {
   return fToCelsius(HI);
 }
 
-// ── Risk score 0-100 from Heat Index ──────────────────────────────────────
+// ── Universal Thermal Climate Index (UTCI) ──────────────────────────────────
+// Inputs: tempC (°C), relativeHumidity (%), windSpeed (km/h), solarRad (W/m²)
+export function calcUTCI(tempC: number, rh: number, windKmH: number = 10, solarRad: number = 500): number {
+  // Vapor pressure e (hPa)
+  const e = (rh / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
+  const windMPerS = Math.max(0.5, windKmH / 3.6);
+  const radOffset = (solarRad / 1000) * 4.5; // Solar radiant heat load adjustment
+  const utci = tempC + 0.344 * e - 0.92 * windMPerS + radOffset - 2.1;
+  return Math.round(utci * 10) / 10;
+}
+
+// ── Risk score 0-100 from Heat Index / UTCI ──────────────────────────────
 export function hiToRiskScore(hi: number): number {
   if (hi < 27) return Math.round((hi / 27) * 20);
   if (hi < 32) return Math.round(20 + ((hi - 27) / 5) * 20);

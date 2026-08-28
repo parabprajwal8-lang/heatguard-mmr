@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { calcHeatIndex, hiToRiskScore, scoreToBand, type RiskBand } from "@/lib/thermalIndex";
+import { calcHeatIndex, calcUTCI, hiToRiskScore, scoreToBand, type RiskBand } from "@/lib/thermalIndex";
 
 // ── Complete 24 BMC Wards of Mumbai ─────────────────────────────────────────
 export const WARDS = [
@@ -47,6 +47,7 @@ export interface WardWeather {
   windSpeed: number;
   solarRad: number;
   heatIndex: number;
+  utci: number;
   riskScore: number;
   risk: RiskBand;
 }
@@ -77,6 +78,7 @@ async function fetchWard(ward: (typeof WARDS)[0]): Promise<WardWeather> {
     shortwave_radiation: number;
   };
   const hi = calcHeatIndex(c.temperature_2m, c.relative_humidity_2m);
+  const utci = calcUTCI(c.temperature_2m, c.relative_humidity_2m, c.wind_speed_10m, c.shortwave_radiation);
   const score = hiToRiskScore(hi);
   return {
     id: ward.id,
@@ -88,6 +90,7 @@ async function fetchWard(ward: (typeof WARDS)[0]): Promise<WardWeather> {
     windSpeed: c.wind_speed_10m,
     solarRad: c.shortwave_radiation,
     heatIndex: Math.round(hi * 10) / 10,
+    utci: Math.round(utci * 10) / 10,
     riskScore: score,
     risk: scoreToBand(score),
   };

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import { ScenarioProvider } from "@/context/ScenarioContext";
 import "./index.css";
 
 // Lazy-load page routes for code-splitting
@@ -21,21 +22,23 @@ function PageLoader() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-background text-on-background">
-        <Navbar />
-        {/* pt-16 accounts for fixed navbar height (h-16 = 64px) */}
-        <main className="pt-16">
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/admin" element={<AdminView />} />
-              <Route path="/hospital" element={<HospitalView />} />
-            </Routes>
-          </Suspense>
-        </main>
-      </div>
-    </BrowserRouter>
+    <ScenarioProvider>
+      <BrowserRouter>
+        <div className="min-h-screen bg-background text-on-background">
+          <Navbar />
+          {/* pt-16 accounts for fixed navbar height (h-16 = 64px) */}
+          <main className="pt-16">
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/admin" element={<AdminView />} />
+                <Route path="/hospital" element={<HospitalView />} />
+              </Routes>
+            </Suspense>
+          </main>
+        </div>
+      </BrowserRouter>
+    </ScenarioProvider>
   );
 }
 

@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { wardGeoJSON, coolingShelters, hospitals, type WardProperties } from "@/data/mapData";
 import type { WardWeather } from "@/hooks/useWeatherData";
 import WardDrawer from "@/components/WardDrawer";
+import { useScenario } from "@/context/ScenarioContext";
 
 // ── Risk color scale ────────────────────────────────────────────────────────
 function riskColor(score: number) {
@@ -34,6 +35,7 @@ interface RiskMapProps {
 
 // ── Main component ──────────────────────────────────────────────────────────
 export default function RiskMap({ wards, loading }: RiskMapProps) {
+  const { setSelectedWardId } = useScenario();
   const [layers, setLayers] = useState<Layers>({ wards: true, shelters: true, hospitals: true });
   const [selectedWard, setSelectedWard] = useState<WardWeather | null>(null);
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
@@ -49,6 +51,7 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
       const w = wardMap.get(wardId);
       if (w) {
         setSelectedWard(w);
+        setSelectedWardId(wardId);
         // Get center of ward from WARDS constant
         const feat = wardGeoJSON.features.find((f) => f.properties.id === wardId);
         if (feat) {
@@ -60,7 +63,7 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [wards]
+    [wards, setSelectedWardId]
   );
 
   // Filter wards by search
@@ -104,7 +107,7 @@ export default function RiskMap({ wards, loading }: RiskMapProps) {
         target.setStyle({ weight: 3, fillOpacity: 0.6 });
         if (w) {
           target.bindTooltip(
-            `<strong>${w.name}</strong><br/>Risk: ${w.riskScore}/100 · ${w.risk}<br/>Temp: ${w.temp.toFixed(1)}°C · HI: ${w.heatIndex.toFixed(1)}°C`,
+            `<strong>${w.name}</strong><br/>Risk: ${w.riskScore}/100 · ${w.risk}<br/>WBGT: ${w.heatIndex.toFixed(1)}°C | UTCI: ${w.utci.toFixed(1)}°C`,
             { sticky: true, className: "ward-tooltip" }
           ).openTooltip();
         }

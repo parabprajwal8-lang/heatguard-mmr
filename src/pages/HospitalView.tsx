@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useWeatherData } from "@/hooks/useWeatherData";
+import { useScenario } from "@/context/ScenarioContext";
 import type { RiskBand } from "@/lib/thermalIndex";
 
 // ── Risk badge styles ───────────────────────────────────────────────────────
@@ -21,6 +22,8 @@ interface CaseEntry {
 
 export default function HospitalView() {
   const { wards, loading } = useWeatherData();
+  const { scenarioActive, simulatedIndex, getEffectiveWardData } = useScenario();
+
   const [cases, setCases] = useState<CaseEntry[]>([
     { id: 1, date: "2026-08-27", expected: 12, actual: 9, notes: "Mostly elderly patients from L Ward" },
     { id: 2, date: "2026-08-26", expected: 8, actual: 11, notes: "Spike from outdoor workers in Dharavi" },
@@ -41,17 +44,82 @@ export default function HospitalView() {
 
   const sortedWards = [...wards].sort((a, b) => b.riskScore - a.riskScore);
 
+  // Highest risk ward effective index
+  const topWard = getEffectiveWardData(sortedWards[0]);
+  const effectiveScore = topWard?.riskScore ?? 50;
+
+  // Phase 7 Formula: Expected Bed & Infrastructure Requirement Predictions
+  // Formula: multiplier based on effective risk score (0-100)
+  const riskMultiplier = Math.max(1.0, 1.0 + (effectiveScore - 20) * 0.04);
+  const estimatedSurgeBeds = Math.round(45 * riskMultiplier);
+  const estimatedICUNeeded = Math.round(12 * riskMultiplier);
+  const estimatedMistingResus = Math.round(8 * riskMultiplier);
+  const estimatedORSPackets = Math.round(1500 * riskMultiplier);
+
   return (
     <div className="max-w-max-width mx-auto px-margin-mobile md:px-margin-desktop py-lg space-y-lg">
 
       {/* Header */}
-      <div className="pb-sm border-b border-surface-variant">
-        <h1 className="text-display-lg-mobile md:text-display-lg font-display-lg-mobile md:font-display-lg text-primary">
-          Hospital Operations
-        </h1>
-        <p className="text-body-lg font-body-lg text-on-surface-variant mt-xs">
-          Heat-case tracking and live ward risk monitoring for hospital preparedness.
-        </p>
+      <div className="pb-sm border-b border-surface-variant flex flex-col sm:flex-row sm:items-end justify-between gap-md">
+        <div>
+          <h1 className="text-display-lg-mobile md:text-display-lg font-display-lg-mobile md:font-display-lg text-primary">
+            Hospital Operations Portal
+          </h1>
+          <p className="text-body-lg font-body-lg text-on-surface-variant mt-xs">
+            Heat-case tracking, live risk feeds, and clinical surge capacity forecasting.
+          </p>
+        </div>
+        {scenarioActive && (
+          <div className="bg-secondary-container text-on-secondary-container px-md py-xs rounded-full text-label-sm font-label-sm font-bold flex items-center gap-xs">
+            <span className="material-symbols-outlined text-sm">tune</span>
+            SIMULATED OVERRIDE: {simulatedIndex}°C UTCI
+          </div>
+        )}
+      </div>
+
+      {/* Phase 7 Prediction Panel */}
+      <div className="bg-surface-container-lowest rounded-xl shadow-level-1 p-lg border border-surface-variant space-y-md">
+        <div className="flex items-center justify-between">
+          <h2 className="text-headline-md font-headline-md text-primary flex items-center gap-xs">
+            <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>
+              analytics
+            </span>
+            Expected Bed & Infrastructure Requirement Prediction
+          </h2>
+          <span className="text-label-sm font-label-sm px-sm py-xs bg-surface-container-high rounded text-on-surface-variant">
+            Formula Estimate (Live Score: {effectiveScore}/100)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-md">
+          <div className="bg-surface p-md rounded-xl border border-surface-variant text-center">
+            <span className="material-symbols-outlined text-primary text-md">bed</span>
+            <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Surge General Beds</span>
+            <span className="text-headline-lg font-headline-lg text-primary font-bold">{estimatedSurgeBeds}</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">Est. {riskMultiplier.toFixed(1)}x baseline</span>
+          </div>
+
+          <div className="bg-surface p-md rounded-xl border border-surface-variant text-center">
+            <span className="material-symbols-outlined text-secondary text-md">medical_services</span>
+            <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">ICU Resuscitation Beds</span>
+            <span className="text-headline-lg font-headline-lg text-secondary font-bold">{estimatedICUNeeded}</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">High thermal monitoring</span>
+          </div>
+
+          <div className="bg-surface p-md rounded-xl border border-surface-variant text-center">
+            <span className="material-symbols-outlined text-error text-md">ac_unit</span>
+            <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">Cooling Immersion Tubs</span>
+            <span className="text-headline-lg font-headline-lg text-error font-bold">{estimatedMistingResus}</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">Rapid ice water immersion</span>
+          </div>
+
+          <div className="bg-surface p-md rounded-xl border border-surface-variant text-center">
+            <span className="material-symbols-outlined text-tertiary-fixed-dim text-md">water_drop</span>
+            <span className="text-label-sm font-label-sm text-on-surface-variant block mt-xs">ORS Electrolyte Reserves</span>
+            <span className="text-headline-lg font-headline-lg text-primary font-bold">{estimatedORSPackets}</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">Packets required / 24h</span>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-lg">
@@ -165,25 +233,28 @@ export default function HospitalView() {
               </div>
             ) : (
               <div className="space-y-sm">
-                {sortedWards.map((w) => (
-                  <div
-                    key={w.id}
-                    className="bg-surface p-md rounded-lg border border-surface-variant flex justify-between items-center hover:shadow-level-1 transition-shadow"
-                  >
-                    <div>
-                      <p className="text-body-md font-body-md text-on-background font-medium">{w.name}</p>
-                      <p className="text-label-sm font-label-sm text-on-surface-variant mt-xs">
-                        {w.temp.toFixed(1)}°C · HI {w.heatIndex.toFixed(1)}°C
-                      </p>
+                {sortedWards.map((w) => {
+                  const activeW = getEffectiveWardData(w) ?? w;
+                  return (
+                    <div
+                      key={activeW.id}
+                      className="bg-surface p-md rounded-lg border border-surface-variant flex justify-between items-center hover:shadow-level-1 transition-shadow"
+                    >
+                      <div>
+                        <p className="text-body-md font-body-md text-on-background font-medium">{activeW.name}</p>
+                        <p className="text-label-sm font-label-sm text-on-surface-variant mt-xs">
+                          WBGT {activeW.heatIndex.toFixed(1)}°C · UTCI {activeW.utci.toFixed(1)}°C
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-xs">
+                        <span className={`px-sm py-xs rounded-full text-label-sm font-label-sm font-bold ${RISK_STYLE[activeW.risk]}`}>
+                          {activeW.risk}
+                        </span>
+                        <span className="text-label-sm font-label-sm text-on-surface-variant">{activeW.riskScore}/100</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-xs">
-                      <span className={`px-sm py-xs rounded-full text-label-sm font-label-sm font-bold ${RISK_STYLE[w.risk]}`}>
-                        {w.risk}
-                      </span>
-                      <span className="text-label-sm font-label-sm text-on-surface-variant">{w.riskScore}/100</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
