@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useScenario } from "@/context/ScenarioContext";
 import type { WardWeather } from "@/hooks/useWeatherData";
+import InteractiveBodyMannequin, { type OrganKey } from "@/components/InteractiveBodyMannequin";
 
 type AgeGroup = "children" | "adults" | "elderly";
-type OrganKey = "brain" | "heart" | "kidneys" | "skin" | "muscles";
 
 interface OrganInfo {
   name: string;
   icon: string;
-  pos: { top: string; left: string };
   manifestations: Record<AgeGroup, { title: string; desc: string; risk: "Low" | "Moderate" | "High" | "Critical" }>;
 }
 
@@ -16,7 +15,6 @@ const ORGANS: Record<OrganKey, OrganInfo> = {
   brain: {
     name: "Brain & Nervous System",
     icon: "psychology",
-    pos: { top: "12%", left: "50%" },
     manifestations: {
       children: { title: "Pediatric Thermal Distress", desc: "Extreme irritability, febrile seizures, lethargy, rapid elevation in core head temp.", risk: "Critical" },
       adults: { title: "Central Thermoregulatory Failure", desc: "Heat syncope, disorientation, ataxia, high risk of heat stroke (>40.5°C core temp).", risk: "Critical" },
@@ -26,7 +24,6 @@ const ORGANS: Record<OrganKey, OrganInfo> = {
   heart: {
     name: "Heart & Cardiovascular System",
     icon: "favorite",
-    pos: { top: "28%", left: "50%" },
     manifestations: {
       children: { title: "Compensatory Tachycardia", desc: "Heart rate increases >160 bpm to drive cutaneous cooling; rapid exhaustion.", risk: "High" },
       adults: { title: "Cardiovascular Workload Surge", desc: "Extreme stroke volume strain, peripheral vasodilation leading to sudden BP drop.", risk: "High" },
@@ -36,7 +33,6 @@ const ORGANS: Record<OrganKey, OrganInfo> = {
   kidneys: {
     name: "Kidneys & Renal Function",
     icon: "water_drop",
-    pos: { top: "42%", left: "50%" },
     manifestations: {
       children: { title: "Rapid Dehydration Oliguria", desc: "Concentrated urine, electrolyte imbalance, swift acute kidney stress.", risk: "High" },
       adults: { title: "Rhabdomyolysis Renal Toxicity", desc: "Myoglobin accumulation from muscle breakdown causing acute tubular necrosis.", risk: "Critical" },
@@ -46,7 +42,6 @@ const ORGANS: Record<OrganKey, OrganInfo> = {
   skin: {
     name: "Skin & Sweat Glands",
     icon: "dermatology",
-    pos: { top: "52%", left: "50%" },
     manifestations: {
       children: { title: "Sudamina & Heat Rash", desc: "Miliaria rubra, sweat gland blockage, inability to shed heat efficiently.", risk: "Moderate" },
       adults: { title: "Cutaneous Vasodilation / Anhidrosis", desc: "Profuse sweating early on, leading to anhidrosis (sweat shutoff) in extreme heat.", risk: "High" },
@@ -56,7 +51,6 @@ const ORGANS: Record<OrganKey, OrganInfo> = {
   muscles: {
     name: "Skeletal Muscles",
     icon: "fitness_center",
-    pos: { top: "68%", left: "50%" },
     manifestations: {
       children: { title: "Muscle Cramps & Spasms", desc: "Sodium and electrolyte depletion causing painful abdominal and limb cramps.", risk: "Moderate" },
       adults: { title: "Exertional Rhabdomyolysis", desc: "Severe muscle breakdown, cell membrane perforation, micro-tears.", risk: "High" },
@@ -150,42 +144,15 @@ export default function OrganVisualizer({ ward }: { ward?: WardWeather }) {
         </div>
       </div>
 
-      {/* Main Grid: Body SVG Diagram + Organ Manifestation */}
+      {/* Main Grid: Interactive Body Mannequin + Organ Manifestation */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-lg items-center">
-        {/* Left: Interactive Body Outline (5 cols) */}
-        <div className="md:col-span-5 bg-surface-bright rounded-xl p-md border border-surface-variant relative flex flex-col items-center min-h-[340px]">
-          <div className="relative w-48 h-80 flex items-center justify-center">
-            <img
-              src="/human_body_outline.png"
-              alt="Human Body Medical Outline"
-              className="h-full object-contain filter drop-shadow opacity-90"
-            />
-
-            {/* Clickable Organ Stress Hotspots */}
-            {(Object.keys(ORGANS) as OrganKey[]).map((key) => {
-              const info = ORGANS[key];
-              const isSelected = activeOrgan === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setActiveOrgan(key)}
-                  style={{ top: info.pos.top, left: info.pos.left }}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                    isSelected
-                      ? "bg-secondary text-on-secondary ring-4 ring-secondary/30 scale-125 z-20 shadow-lg"
-                      : "bg-surface-container-lowest text-primary border border-outline-variant hover:scale-110 z-10"
-                  }`}
-                  title={info.name}
-                >
-                  <span className="material-symbols-outlined text-sm">{info.icon}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <span className="text-label-sm font-label-sm text-on-surface-variant mt-sm text-center">
-            Click any organ pin to inspect physiological response
-          </span>
+        {/* Left: Interactive Mannequin Model (5 cols) */}
+        <div className="md:col-span-5 bg-surface-bright rounded-xl p-md border border-surface-variant flex flex-col items-center">
+          <InteractiveBodyMannequin
+            activeOrgan={activeOrgan}
+            onSelectOrgan={setActiveOrgan}
+            riskLevel={effectiveWard?.risk}
+          />
         </div>
 
         {/* Right: Organ Response Panel (7 cols) */}

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { Advisory } from "@/hooks/useAdvisory";
+import InteractiveBodyMannequin, { type OrganKey } from "@/components/InteractiveBodyMannequin";
 
 interface HumanBodyMeterProps {
   riskLevel: string;
@@ -8,38 +10,7 @@ interface HumanBodyMeterProps {
 
 export default function HumanBodyMeter({ riskLevel, riskScore, advisory }: HumanBodyMeterProps) {
   const isHighOrExtreme = riskScore >= 50 || riskLevel === "Extreme" || riskLevel === "High";
-
-  // Physiological stress tags based on risk score
-  const bodyTags = [
-    {
-      label: "Brain & CNS",
-      desc: isHighOrExtreme ? "High Risk: Dizziness, confusion, heat syncope" : "Mild Risk: Occasional fatigue & headaches",
-      pos: "top-[12%] left-[55%]",
-      tagColor: isHighOrExtreme ? "bg-error text-white" : "bg-primary text-white",
-      icon: "psychology",
-    },
-    {
-      label: "Heart & Vascular",
-      desc: isHighOrExtreme ? "Elevated HR, extreme circulatory strain" : "Normal increase in skin blood flow",
-      pos: "top-[28%] left-[55%]",
-      tagColor: isHighOrExtreme ? "bg-secondary text-white" : "bg-primary text-white",
-      icon: "favorite",
-    },
-    {
-      label: "Kidneys & Urinary",
-      desc: isHighOrExtreme ? "High dehydration: Dark urine, renal stress" : "Standard filtration, maintain fluids",
-      pos: "top-[42%] left-[55%]",
-      tagColor: isHighOrExtreme ? "bg-[#dd6b20] text-white" : "bg-primary text-white",
-      icon: "water_drop",
-    },
-    {
-      label: "Muscles & Skin",
-      desc: isHighOrExtreme ? "Heat cramps, heavy sweating / thermal fatigue" : "Normal perspiration",
-      pos: "top-[58%] left-[55%]",
-      tagColor: isHighOrExtreme ? "bg-secondary text-white" : "bg-primary text-white",
-      icon: "fitness_center",
-    },
-  ];
+  const [activeOrgan, setActiveOrgan] = useState<OrganKey>("brain");
 
   // Hydration specs per demographic
   const hydrationData = [
@@ -75,46 +46,17 @@ export default function HumanBodyMeter({ riskLevel, riskScore, advisory }: Human
           Thermal Body Impact & Hydration Meter
         </h4>
         <span className="text-label-sm font-label-sm px-xs py-0.5 rounded bg-surface-container-high text-on-surface-variant">
-          Medical Reference
+          Interactive Medical Reference
         </span>
       </div>
 
-      {/* Body Diagram with anatomical tag pins */}
-      <div className="relative bg-surface-bright rounded-lg p-md border border-surface-variant flex flex-col md:flex-row items-center gap-md">
-        {/* Human Body Image Container */}
-        <div className="relative w-44 h-64 shrink-0 flex items-center justify-center bg-white/60 rounded-md border border-outline-variant p-2">
-          <img
-            src="/human_body_outline.png"
-            alt="Human Body Medical Outline"
-            className="h-full object-contain filter drop-shadow-sm opacity-90"
-          />
-
-          {/* Pulse indicators on diagram */}
-          <div className="absolute top-[12%] left-[48%] w-3 h-3 bg-error rounded-full animate-ping opacity-75" />
-          <div className="absolute top-[28%] left-[48%] w-3 h-3 bg-secondary rounded-full animate-ping opacity-75" />
-          <div className="absolute top-[42%] left-[48%] w-3 h-3 bg-[#dd6b20] rounded-full animate-ping opacity-75" />
-        </div>
-
-        {/* Tagged Body Impact Breakdown */}
-        <div className="flex-1 space-y-xs w-full">
-          {bodyTags.map((tag) => (
-            <div
-              key={tag.label}
-              className="p-xs bg-surface-container-lowest rounded-md border border-surface-variant text-left hover:border-primary transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-label-sm font-label-sm font-bold text-primary flex items-center gap-xs">
-                  <span className="material-symbols-outlined text-[14px] text-on-surface-variant">{tag.icon}</span>
-                  {tag.label}
-                </span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${tag.tagColor}`}>
-                  {isHighOrExtreme ? "STRESS" : "NORMAL"}
-                </span>
-              </div>
-              <p className="text-[11px] text-on-surface-variant mt-0.5 leading-tight">{tag.desc}</p>
-            </div>
-          ))}
-        </div>
+      {/* Interactive Vector Mannequin */}
+      <div className="bg-surface-bright rounded-xl p-md border border-surface-variant flex flex-col items-center">
+        <InteractiveBodyMannequin
+          activeOrgan={activeOrgan}
+          onSelectOrgan={setActiveOrgan}
+          riskLevel={riskLevel}
+        />
       </div>
 
       {/* Demographics Water Intake Guidelines */}
